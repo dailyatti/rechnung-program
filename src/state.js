@@ -2,8 +2,8 @@ import { loadState } from './storage/engine.js';
 
 export let state = null;
 
-export function initState() {
-  state = loadState();
+export async function initState() {
+  state = await loadState();
 }
 
 export function setState(newState) {

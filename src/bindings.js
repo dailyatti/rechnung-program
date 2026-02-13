@@ -103,11 +103,13 @@ export function bind(loadAll) {
   $("btnExportJSON").addEventListener("click", exportJSON);
   $("btnImportJSON").addEventListener("click", importJSON);
   $("btnBackendMail").addEventListener("click", sendBackend);
-  $("btnResetAll").addEventListener("click", () => {
+  $("btnResetAll").addEventListener("click", async () => {
     if (!confirm("ACHTUNG: Alle Daten werden unwiderruflich gelöscht! Fortfahren?")) return;
     if (!confirm("Sind Sie absolut sicher? Erstellen Sie vorher ein Backup!")) return;
     localStorage.removeItem(STORAGE_KEY);
     setState(bootstrap());
+    // Clear cloud data too
+    syncToCloud();
     loadAll();
     alert("Alle Daten wurden gelöscht.");
   });

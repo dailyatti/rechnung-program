@@ -26,12 +26,6 @@ import { initAuth } from './auth.js';
 import { initClock } from './clock.js';
 import { initCloudSync } from './netlify-sync.js';
 
-// Initialize auth first
-initAuth();
-
-// Initialize state from localStorage
-initState();
-
 // loadAll function (used by reset + import)
 function loadAll() {
   refreshInvoiceTab();
@@ -43,17 +37,27 @@ function loadAll() {
   setSaveState(false);
 }
 
-// Register loadAll for json-backup module
-setLoadAll(loadAll);
+async function init() {
+  // Initialize auth first
+  initAuth();
 
-// Init sequence
-initTabs();
-bind(loadAll);
-setupLogo();
-bindQuickClientModal();
-bindAssignModal();
-initClock();
-initCloudSync();
+  // Initialize state from cloud (fallback: localStorage)
+  await initState();
 
-// Initial render
-loadAll();
+  // Register loadAll for json-backup module
+  setLoadAll(loadAll);
+
+  // Init sequence
+  initTabs();
+  bind(loadAll);
+  setupLogo();
+  bindQuickClientModal();
+  bindAssignModal();
+  initClock();
+  initCloudSync();
+
+  // Initial render
+  loadAll();
+}
+
+init();
