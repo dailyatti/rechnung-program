@@ -1,0 +1,7 @@
+@media print{
+  @page{margin:0}
+  body{background:#fff}
+  .sidebar{display:none}
+  .main{padding:0;background:#fff}
+  .paper{box-shadow:none;border-radius:0}
+}

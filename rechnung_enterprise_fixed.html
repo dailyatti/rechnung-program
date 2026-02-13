@@ -1,0 +1,1774 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Rechnung Generator — Altenbetreuung24 Enterprise</title>
+<script defer src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06080f;
+  --panel:rgba(12,16,28,.95);
+  --panel-border:rgba(255,255,255,.06);
+  --card:rgba(18,24,42,.55);
+  --card-hover:rgba(24,32,56,.7);
+  --text:#dfe3ed;
+  --muted:#6b7a96;
+  --accent:#4c8dff;
+  --accent2:#38bdf8;
+  --accent-dim:rgba(76,141,255,.10);
+  --good:#34d399;--good-dim:rgba(52,211,153,.10);
+  --warn:#fbbf24;--warn-dim:rgba(251,191,36,.10);
+  --bad:#f87171;--bad-dim:rgba(248,113,113,.10);
+  --paper-bg:#fff;--paper-text:#111;
+  --radius:10px;--radius-sm:7px;
+  --shadow:0 30px 80px -20px rgba(0,0,0,.7);
+  --font:'Outfit',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;overflow:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(76,141,255,.2);border-radius:3px}
+
+/* ---- LAYOUT ---- */
+.sidebar{width:480px;min-width:480px;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--panel-border);overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--panel-border);flex-shrink:0}
+.tab{flex:1;padding:12px 0;text-align:center;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:var(--text);background:rgba(255,255,255,.02)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(76,141,255,.04)}
+.tab-body{flex:1;overflow-y:auto;padding:16px;scrollbar-width:thin;scrollbar-color:rgba(76,141,255,.2) transparent}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.main{flex:1;overflow:auto;padding:36px;display:flex;justify-content:center;background:radial-gradient(ellipse at 25% 15%,rgba(76,141,255,.03) 0%,transparent 50%),radial-gradient(ellipse at 75% 85%,rgba(52,211,153,.02) 0%,transparent 50%)}
+
+/* ---- CARD ---- */
+.card{background:var(--card);border:1px solid var(--panel-border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card:hover{background:var(--card-hover)}
+.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-t{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.badge{font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.b-ok{background:var(--good-dim);color:var(--good)}
+.b-dirty{background:var(--warn-dim);color:var(--warn)}
+.b-info{background:var(--accent-dim);color:var(--accent)}
+.b-bad{background:var(--bad-dim);color:var(--bad)}
+.hint{color:var(--muted);font-size:11.5px;line-height:1.5}
+label{display:block;font-size:10.5px;font-weight:600;color:var(--muted);margin:9px 0 3px;letter-spacing:.02em}
+input,textarea,select{width:100%;border:1px solid var(--panel-border);background:rgba(0,0,0,.3);color:var(--text);border-radius:var(--radius-sm);padding:8px 11px;font-size:12.5px;font-family:var(--font);outline:none;transition:border-color .18s,box-shadow .18s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+textarea{resize:vertical;min-height:50px}
+.row{display:flex;gap:9px}.row>*{flex:1}
+.btn-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.btn{border:1px solid var(--panel-border);background:rgba(255,255,255,.03);color:var(--text);padding:7px 13px;border-radius:var(--radius-sm);cursor:pointer;font-weight:600;font-size:11.5px;font-family:var(--font);display:inline-flex;align-items:center;gap:5px;transition:all .18s;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,.07);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-a{background:var(--accent);color:#fff;border-color:transparent}
+.btn-a:hover{background:#3b7bee}
+.btn-g{background:var(--good);color:#080e1a;border-color:transparent}
+.btn-g:hover{background:#28b884}
+.btn-w{background:var(--warn);color:#080e1a;border-color:transparent}
+.btn-w:hover{background:#e0a81e}
+.btn-d{background:var(--bad);color:#fff;border-color:transparent}
+.btn-d:hover{background:#e05050}
+.divider{height:1px;background:var(--panel-border);margin:14px 0}
+.warn-box{border:1px solid rgba(251,191,36,.2);background:var(--warn-dim);color:#ffe9a6;padding:9px 11px;border-radius:var(--radius-sm);font-size:11.5px;line-height:1.4}
+.info-box{border:1px solid rgba(76,141,255,.2);background:var(--accent-dim);color:#a8c9ff;padding:9px 11px;border-radius:var(--radius-sm);font-size:11.5px;line-height:1.4}
+.check-label{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text);margin:7px 0 3px}
+.check-label input[type="checkbox"]{width:auto}
+
+/* Logo */
+.logo-drop{border:1px dashed rgba(255,255,255,.14);border-radius:var(--radius-sm);padding:11px;background:rgba(0,0,0,.1);transition:border-color .2s}
+.logo-drop.dragover{border-color:var(--accent)}
+.logo-drop-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.mini-logo{width:72px;height:40px;border-radius:var(--radius-sm);background:transparent;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px dashed rgba(255,255,255,.10)}
+.mini-logo img{max-width:100%;max-height:100%;object-fit:contain}
+
+/* Member select */
+.member-wrap{background:var(--accent-dim);border:1px solid rgba(76,141,255,.18);border-radius:var(--radius-sm);padding:9px 11px;margin-top:9px}
+.member-wrap label{color:var(--accent);margin-top:0}
+
+/* Assignment card */
+.assign-card{background:rgba(255,255,255,.03);border:1px solid var(--panel-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;cursor:pointer;transition:all .18s}
+.assign-card:hover{background:rgba(255,255,255,.06);border-color:rgba(76,141,255,.2)}
+.assign-card.selected{border-color:var(--accent);background:var(--accent-dim)}
+.assign-card .name{font-weight:600;font-size:13px}
+.assign-card .meta{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* History table */
+.htable{width:100%;border-collapse:collapse;font-size:11.5px}
+.htable th{text-align:left;padding:7px 8px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--panel-border)}
+.htable td{padding:8px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:top}
+.htable tr:hover td{background:rgba(255,255,255,.02)}
+.htable .mono{font-family:var(--mono);font-size:11px}
+.status-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase}
+.st-final{background:var(--accent-dim);color:var(--accent)}
+.st-paid{background:var(--good-dim);color:var(--good)}
+.st-cancel{background:var(--bad-dim);color:var(--bad)}
+
+/* Phone link */
+.phone-link{color:var(--accent2);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+.phone-link:hover{text-decoration:underline}
+.phone-icon{font-size:13px}
+
+/* Stats */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stat-box{background:rgba(0,0,0,.2);border:1px solid var(--panel-border);border-radius:var(--radius-sm);padding:10px}
+.stat-val{font-size:18px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+
+/* ---- PAPER ---- */
+.paper-wrap{width:210mm}
+.paper{width:210mm;min-height:297mm;background:var(--paper-bg);color:var(--paper-text);box-shadow:var(--shadow);border-radius:6px;overflow:hidden}
+.paper-inner{padding:16mm 18mm;font-family:"Times New Roman",Times,serif;font-size:12.5pt}
+.top-band{display:flex;align-items:center;justify-content:space-between;gap:14mm;margin-bottom:14mm}
+.logo-area{width:120mm;height:26mm;display:flex;align-items:center;justify-content:flex-start;overflow:visible;background:transparent;border:none;padding:0}
+.logo-area img{display:none;height:26mm;width:auto;max-width:120mm;object-fit:contain;object-position:left center}
+.addr-right{text-align:right;font-family:Arial,sans-serif;font-size:10.5pt;line-height:1.25;color:#111;min-width:56mm}
+.from-block{font-family:Arial,sans-serif;font-size:10.5pt;line-height:1.25;margin-bottom:10mm;color:#111}
+.bill-meta{display:flex;justify-content:space-between;margin-bottom:6mm;font-family:Arial,sans-serif;font-size:10.5pt;color:#111}
+.bill-meta .left,.bill-meta .right{width:50%}
+.bill-meta .right{text-align:right}
+.title-bar{padding:4mm 0;text-align:center;font-family:"Times New Roman",Times,serif;letter-spacing:.35em;font-weight:bold;margin:4mm 0 0}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-family:Arial,sans-serif;font-size:10.5pt}
+.tbl thead th{background:#bfbfbf;color:#111;font-weight:bold;padding:6px 8px;border:1px dotted #333}
+.tbl td{padding:10px 8px;vertical-align:top;border-left:1px dotted #333;border-right:1px dotted #333;border-bottom:1px dotted #333;height:36mm}
+.col1{width:30%}.col2{width:50%}.col3{width:20%;text-align:right}
+.pay-line{font-family:Arial,sans-serif;font-size:9.5pt;color:#0a7a1a;margin:6mm 0 0}
+.sum-row{margin-top:8mm;display:flex;justify-content:flex-end;align-items:center;gap:10mm;font-family:Arial,sans-serif;font-size:10.5pt}
+.sum-box{min-width:38mm;text-align:right;font-weight:bold;background:#bfbfbf;padding:3px 6px}
+.bottom-block{margin-top:10mm;display:flex;justify-content:space-between;align-items:flex-start;font-family:Arial,sans-serif;font-size:10.5pt;color:#111}
+.bank{white-space:pre-line;line-height:1.35}
+.sig{margin-top:10mm;font-family:Arial,sans-serif;font-size:10.5pt;color:#111}
+.sig-line{width:80mm;border-bottom:1px solid #111;height:10mm;margin-top:2mm}
+
+#paper{background:#fff}
+@media print{@page{margin:0}body{background:#fff}.sidebar{display:none}.main{padding:0;background:#fff}.paper{box-shadow:none;border-radius:0}}
+
+/* =========================
+   MODAL (Quick Add Client)
+   ========================= */
+.modal{position:fixed;inset:0;display:none;z-index:9999}
+.modal.open{display:block}
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}
+.modal-card{position:relative;max-width:820px;margin:6vh auto;background:var(--card);border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.55);padding:16px}
+.modal-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.modal-title{font-weight:900;letter-spacing:.4px}
+.modal-sub{color:var(--muted);font-size:12px;margin-top:2px}
+.icon-btn{width:34px;height:34px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);
+  color:var(--text);cursor:pointer}
+.icon-btn:hover{background:rgba(255,255,255,.1)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+@media (max-width:860px){.modal-card{margin:3vh 12px}.grid2{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="tabs">
+    <div class="tab active" data-tab="invoice">Rechnung</div>
+    <div class="tab" data-tab="clients">Kunden</div>
+    <div class="tab" data-tab="persons">Betreuer</div>
+    <div class="tab" data-tab="history">Historie</div>
+    <div class="tab" data-tab="settings">System</div>
+  </div>
+  <div class="tab-body">
+
+    <!-- ============ TAB: RECHNUNG ============ -->
+    <div class="tab-panel active" id="panelInvoice">
+
+      <div class="card">
+        <div class="card-h">
+          <span class="card-t">Kunde (Familie)</span>
+          <span id="saveState" class="badge b-ok">Gespeichert</span>
+        </div>
+        <select id="selClient"></select>
+        <div class="btn-row">
+          <button class="btn btn-a" id="btnQuickClient" type="button">+ Neuer Kunde</button>
+          <button class="btn" id="btnGoClients" type="button">Kunden verwalten</button>
+        </div>
+      </div>
+
+      <div class="card" id="cardAssignments">
+        <div class="card-h">
+          <span class="card-t">Zugewiesene Betreuer</span>
+          <span class="badge b-info">Zuweisung</span>
+        </div>
+        <div id="assignList"></div>
+        <div class="btn-row">
+          <button class="btn btn-a" id="btnNewAssign">+ Betreuer zuweisen</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Jede Zuweisung hat eigene Tagessätze und Zuschläge.</div>
+      </div>
+
+      <div class="card" id="cardInvData" style="display:none">
+        <div class="card-h">
+          <span class="card-t">Rechnungsdaten</span>
+          <span class="badge b-info">A4</span>
+        </div>
+
+        <div class="row">
+          <div><label>Rechnungsdatum</label><input id="invoiceDate" type="date"/></div>
+          <div><label>Rechnungsnummer</label><input id="invoiceNo" placeholder="2026/001"/></div>
+        </div>
+        <div class="row">
+          <div><label>Leistungsbeginn</label><input id="startDate" type="date"/></div>
+          <div><label>Leistungsende</label><input id="endDate" type="date"/></div>
+        </div>
+        <div class="row">
+          <div><label>Anzahl Tage</label><input id="dayCount" type="number" min="1" step="1"/></div>
+          <div><label>Tagessatz (€)</label><input id="dailyRate" type="text" inputmode="decimal" placeholder="85,00"/></div>
+        </div>
+        <label class="check-label"><input id="includeLastDay" type="checkbox"/><span>Letzter Tag wird vergütet</span></label>
+        <div class="row">
+          <div><label>Zahlungsfrist (Tage)</label><input id="payDays" type="number" min="0" step="1"/></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="card-h"><span class="card-t">Zuschläge</span></div>
+        <div class="row">
+          <div><label class="check-label"><input id="xmasOn" type="checkbox"/><span>Weihnachtsgeld</span></label><input id="xmasVal" type="text" inputmode="decimal" placeholder="100,00"/></div>
+          <div><label class="check-label"><input id="newyearOn" type="checkbox"/><span>Silvestergeld</span></label><input id="newyearVal" type="text" inputmode="decimal" placeholder="100,00"/></div>
+        </div>
+        <div class="row">
+          <div><label class="check-label"><input id="travelOn" type="checkbox"/><span>Fahrtkosten</span></label><input id="travelVal" type="text" inputmode="decimal" placeholder="300,00"/></div>
+          <div><label class="check-label"><input id="svsOn" type="checkbox"/><span>SVS</span></label><input id="svsVal" type="text" inputmode="decimal" placeholder="341,70"/></div>
+        </div>
+        <div class="hint" style="margin-top:8px">Berechnung: <b>Ende − Anfang + 1</b> = Tage.</div>
+        <div id="dateError" class="warn-box" style="display:none;margin-top:8px">Leistungsende liegt vor Leistungsbeginn!</div>
+
+        <div class="divider"></div>
+        <div class="btn-row">
+          <button class="btn btn-g" id="btnPdf">PDF exportieren</button>
+          <button class="btn btn-a" id="btnXlsx">Excel (.xlsx)</button>
+          <button class="btn" id="btnOds">ODS</button>
+          <button class="btn btn-w" id="btnMailto">E-Mail Entwurf</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-g" id="btnFinalize">✓ Rechnung abschließen</button>
+          <button class="btn" id="btnRemoveAssign">Zuweisung entfernen</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ TAB: KUNDEN ============ -->
+    <div class="tab-panel" id="panelClients">
+      <div class="card">
+        <div class="card-h"><span class="card-t">Kundenverwaltung</span></div>
+        <select id="selClientMgmt"></select>
+        <div class="btn-row">
+          <button class="btn btn-a" id="btnNewClient">+ Neuer Kunde</button>
+          <button class="btn btn-d" id="btnDeleteClient">Löschen</button>
+        </div>
+      </div>
+      <div class="card" id="cardClientEdit">
+        <div class="card-h"><span class="card-t">Kundendaten</span></div>
+        <label>Name</label>
+        <input id="clientName" placeholder="Vor- und Nachname"/>
+        <label>Adresse</label>
+        <textarea id="clientAddress" placeholder="Straße, PLZ Ort"></textarea>
+        <label>E-Mail</label>
+        <input id="clientEmail" placeholder="email@beispiel.at"/>
+        <div class="row">
+          <div>
+            <label>Telefon (Hauptnummer)</label>
+            <input id="clientPhone" placeholder="+43 ..." type="tel"/>
+          </div>
+          <div>
+            <label>Telefon 2 (optional)</label>
+            <input id="clientPhone2" placeholder="+43 ..." type="tel"/>
+          </div>
+        </div>
+        <label>Notizen (intern)</label>
+        <textarea id="clientNotes" placeholder="Interne Notizen zu diesem Kunden..."></textarea>
+        <div id="clientPhoneActions" class="btn-row"></div>
+        <div class="info-box" style="margin-top:10px">Telefonnummern und Notizen erscheinen <b>nicht</b> auf der Rechnung — nur intern sichtbar.</div>
+      </div>
+      <div class="card" id="cardClientStats">
+        <div class="card-h"><span class="card-t">Kundenstatistik</span></div>
+        <div id="clientStatsContent"></div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: BETREUER ============ -->
+    <div class="tab-panel" id="panelPersons">
+      <div class="card">
+        <div class="card-h"><span class="card-t">Betreuerverwaltung</span></div>
+        <select id="selPerson"></select>
+        <div class="btn-row">
+          <button class="btn btn-a" id="btnNewPerson">+ Neue Person</button>
+          <button class="btn" id="btnNewTeam">+ Neues Team</button>
+          <button class="btn btn-d" id="btnDeletePerson">Löschen</button>
+        </div>
+      </div>
+      <div class="card" id="cardPersonEdit">
+        <div class="card-h"><span class="card-t">Personendaten</span></div>
+        <label>Name</label><input id="personName" placeholder="Vor- und Nachname"/>
+        <label>E-Mail</label><input id="personEmail" placeholder="email@beispiel.at"/>
+        <label>Telefon</label><input id="personPhone" placeholder="+43 ..."/>
+        <div class="divider"></div>
+        <label>Adresse (für Rechnung)</label>
+        <textarea id="personAddress" placeholder="Straße, PLZ Ort"></textarea>
+        <div class="divider"></div>
+        <div class="logo-drop" id="logoDrop">
+          <div class="logo-drop-top">
+            <div class="hint"><b>Logo</b><br>Hochladen / Drag&amp;Drop / <b>STRG+V</b></div>
+            <div class="mini-logo"><img id="miniLogoImg" alt="Logo"/></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div><label>Logo-Datei</label><input id="logoFile" type="file" accept="image/*"/></div>
+            <div><label>Modus</label><select id="logoFit"><option value="contain">Anpassen</option><option value="cover">Füllen</option></select></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <label>Bankverbindung</label>
+        <div class="row">
+          <div><input id="bankName" placeholder="Name der Bank"/></div>
+          <div><input id="bic" placeholder="BIC"/></div>
+        </div>
+        <label>IBAN</label><input id="iban" placeholder="AT..."/>
+        <label>Zahlungshinweis</label><input id="payNote" placeholder="Zahlbar sofort nach Rechnungserhalt ohne Abzug."/>
+      </div>
+      <div class="card" id="cardPersonTeams">
+        <div class="card-h"><span class="card-t">Teams</span></div>
+        <div id="personTeamsList" class="hint">Keine Teams.</div>
+        <div class="member-wrap" id="teamMemberWrap" style="display:none">
+          <label>Rechnungsempfänger</label>
+          <select id="teamMemberSel"></select>
+          <div class="hint" style="margin-top:4px">Auf der Rechnung erscheint nur diese Person.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: HISTORIE ============ -->
+    <div class="tab-panel" id="panelHistory">
+      <div class="card">
+        <div class="card-h">
+          <span class="card-t">Rechnungshistorie</span>
+          <span id="histCount" class="badge b-info">0</span>
+        </div>
+        <div class="row">
+          <div><label>Kunde filtern</label><select id="histFilterClient"><option value="">Alle Kunden</option></select></div>
+          <div><label>Betreuer filtern</label><select id="histFilterPerson"><option value="">Alle Betreuer</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Von</label><input id="histFrom" type="date"/></div>
+          <div><label>Bis</label><input id="histTo" type="date"/></div>
+        </div>
+        <label class="check-label" style="margin-top:8px"><input id="histByInvDate" type="checkbox"/><span>Nach Rechnungsdatum filtern (statt Leistungszeitraum)</span></label>
+      </div>
+      <div class="card">
+        <div class="stat-grid" id="histStats"></div>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <table class="htable">
+          <thead><tr>
+            <th>Nr.</th><th>Datum</th><th>Kunde</th><th>Betreuer</th><th>Zeitraum</th><th>Tage</th><th>Betrag</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ TAB: SYSTEM ============ -->
+    <div class="tab-panel" id="panelSettings">
+      <div class="card">
+        <div class="card-h"><span class="card-t">Datenverwaltung</span></div>
+        <div class="btn-row">
+          <button class="btn btn-g" id="btnExportJSON">Vollständiges Backup (JSON)</button>
+          <button class="btn btn-w" id="btnImportJSON">Backup wiederherstellen</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="btnBackendMail">E-Mail senden (Backend)</button>
+        </div>
+        <div class="divider"></div>
+        <div class="card-h"><span class="card-t">Speichernutzung</span></div>
+        <div id="storageInfo" class="hint"></div>
+        <div class="divider"></div>
+        <div class="card-h"><span class="card-t">Gefahrenzone</span></div>
+        <button class="btn btn-d" id="btnResetAll">Alle Daten löschen</button>
+        <div class="hint" style="margin-top:6px">Erstellen Sie vorher ein Backup!</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="card-t">Systeminfo</span></div>
+        <div class="hint">
+          <b>Version:</b> 3.0 Enterprise<br>
+          <b>Schema:</b> v3 (relationales Modell)<br>
+          <b>Speicherort:</b> localStorage (Browser)<br>
+          <b>Datenschutz:</b> Alle Daten bleiben lokal
+        </div>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<main class="main">
+  <div class="paper-wrap">
+    <div class="paper" id="paper">
+      <div class="paper-inner" id="paperInner">
+        <div class="top-band">
+          <div class="logo-area"><img id="paperLogo" alt="Logo"/></div>
+          <div class="addr-right" id="paperAddrRight"></div>
+        </div>
+        <div class="from-block" id="paperFromBlock"></div>
+        <div class="bill-meta">
+          <div class="left" id="paperMetaLeft"></div>
+          <div class="right" id="paperMetaRight"></div>
+        </div>
+        <div class="title-bar">R E C H N U N G</div>
+        <table class="tbl"><thead><tr>
+          <th class="col1">Leistungszeitraum</th><th class="col2">Beschreibung</th><th class="col3">Gesamtpreis</th>
+        </tr></thead><tbody id="paperTbody"></tbody></table>
+        <div class="pay-line" id="paperPayLine"></div>
+        <div class="sum-row"><div><b>Rechnungsbetrag:</b></div><div class="sum-box" id="paperTotalBox"></div></div>
+        <div class="bottom-block">
+          <div class="bank" id="paperBank"></div>
+          <div style="text-align:right;min-width:70mm">
+            <div class="sig"><b>BAR erhalten Unterschrift</b></div>
+            <div class="sig-line"></div>
+            <div class="sig" style="margin-top:6mm">Zahlbar sofort nach Rechnungserhalt ohne Abzug</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+<!-- =========================
+     QUICK ADD CLIENT MODAL
+     ========================= -->
+<div class="modal" id="modalClient" aria-hidden="true">
+  <div class="modal-backdrop" data-close="1"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalClientTitle">
+    <div class="modal-h">
+      <div>
+        <div class="modal-title" id="modalClientTitle">Neuen Kunden anlegen</div>
+        <div class="modal-sub">Schnellformular — wird sofort in Rechnung & Kundenliste verfügbar.</div>
+      </div>
+      <button class="icon-btn" id="btnCloseClientModal" type="button" aria-label="Schließen">✕</button>
+    </div>
+
+    <div class="grid2">
+      <label class="lbl">Name
+        <input id="qcName" class="inp" placeholder="z.B. Familie Muster" autocomplete="off"/>
+      </label>
+      <label class="lbl">E-Mail
+        <input id="qcEmail" class="inp" placeholder="name@mail.com" autocomplete="off"/>
+      </label>
+      <label class="lbl">Telefon
+        <input id="qcPhone" class="inp" placeholder="+43 ..." autocomplete="off"/>
+      </label>
+      <label class="lbl">Telefon 2
+        <input id="qcPhone2" class="inp" placeholder="optional" autocomplete="off"/>
+      </label>
+      <label class="lbl" style="grid-column:1/-1">Adresse (mehrzeilig)
+        <textarea id="qcAddress" class="inp" rows="4" placeholder="Straße, PLZ Ort"></textarea>
+      </label>
+      <label class="lbl" style="grid-column:1/-1">Notizen
+        <textarea id="qcNotes" class="inp" rows="3" placeholder="optional"></textarea>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" id="btnCancelClientModal" type="button">Abbrechen</button>
+      <button class="btn btn-g" id="btnSaveClientModal" type="button">Speichern</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- =========================
+     ASSIGN PERSON MODAL
+     ========================= -->
+<div class="modal" id="modalAssign" aria-hidden="true">
+  <div class="modal-backdrop" data-close="1"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalAssignTitle" style="max-width:480px">
+    <div class="modal-h">
+      <div>
+        <div class="modal-title" id="modalAssignTitle">Betreuer zuweisen</div>
+        <div class="modal-sub">Betreuer für diesen Kunden auswählen.</div>
+      </div>
+      <button class="icon-btn" id="btnCloseAssignModal" type="button" aria-label="Schließen">✕</button>
+    </div>
+    <label>Betreuer auswählen</label>
+    <select id="assignPersonSel"></select>
+    <div class="modal-actions">
+      <button class="btn" id="btnCancelAssignModal" type="button">Abbrechen</button>
+      <button class="btn btn-g" id="btnSaveAssignModal" type="button">Zuweisen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =================================================================
+   STORAGE ENGINE v3 — PhD-Level Relational localStorage
+   =================================================================
+   Architecture:
+   - Relational model: persons, clients, assignments (N:M), history
+   - Assignments link person↔client with independent financial data
+   - History stores immutable snapshots of finalized invoices
+   - Schema versioning with forward-compatible migrations
+   - Size monitoring & quota-exceeded handling
+   - Validation layer with referential integrity checks
+   ================================================================= */
+
+const STORAGE_KEY = "ab24_enterprise_v3";
+const SCHEMA_VER  = 3;
+const DEBOUNCE_MS = 280;
+const MAX_STORAGE_MB = 4;
+
+const uid = ()=> crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Date.now().toString(36);
+const $ = id => document.getElementById(id);
+
+// Set the label of an existing <option> without rebuilding the whole <select>.
+function setSelectOptionText(selectId, value, label){
+  const sel=$(selectId);
+  if(!sel) return;
+  const opt=[...sel.options].find(o=>o.value===value);
+  if(opt) opt.textContent=label;
+}
+
+// Normalize single-line text fields (names, email, phone). Keeps internal spaces.
+function norm1(s){
+  return String(s??"")
+    .replace(/[\t\u00A0]+/g," ")
+    .replace(/\s{2,}/g," ")
+    .trim();
+}
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function mergeStates(base, inc){
+  // Non-destructive merge by id; incoming values win on collisions.
+  const out = clone(base);
+
+  function mergeArrById(key){
+    const a = Array.isArray(out[key]) ? out[key] : [];
+    const b = Array.isArray(inc[key]) ? inc[key] : [];
+    const map = new Map(a.map(x=>[x.id, x]));
+    for(const item of b){
+      const prev = map.get(item.id);
+      map.set(item.id, prev ? ({...prev, ...item}) : item);
+    }
+    out[key] = [...map.values()];
+  }
+
+  mergeArrById("clients");
+  mergeArrById("persons");
+  mergeArrById("teams");
+  mergeArrById("assignments");
+  mergeArrById("invoices");
+
+  // Shared blocks are keyed objects; shallow merge is OK (incoming wins).
+  out.shared = {...(out.shared||{}), ...(inc.shared||{})};
+
+  // UI prefs: keep user's current UI, but if base is empty (fresh), adopt incoming.
+  if(!out.ui || Object.keys(out.ui||{}).length===0) out.ui = inc.ui || out.ui;
+
+  // Current invoice: if incoming has a currentInvoice and base doesn't, adopt.
+  if(!out.currentInvoice && inc.currentInvoice) out.currentInvoice = inc.currentInvoice;
+
+  return out;
+}
+const now = ()=> new Date().toISOString();
+
+// ---- Date Utilities (UTC-based — DST-safe) ----
+function isoToday(){return new Date().toISOString().slice(0,10)}
+function isoFOM(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10)}
+function isoLOM(){const d=new Date();return new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10)}
+function parseISO(s){
+  if(!s) return null;
+  const [y,m,d] = s.split("-").map(Number);
+  if(!y||!m||!d) return null;
+  const dt = new Date(Date.UTC(y, m-1, d));
+  return isNaN(dt) ? null : dt;
+}
+function fmtDE(d){if(!d)return"";return String(d.getUTCDate()).padStart(2,"0")+"."+String(d.getUTCMonth()+1).padStart(2,"0")+"."+d.getUTCFullYear()}
+function fmtMoney(n){return Number(n||0).toLocaleString("de-AT",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function parseMoneyInput(s){const t=String(s??"").trim().replace(/\./g,"").replace(",",".");const n=Number(t);return Number.isFinite(n)?n:0}
+function dayDiff(a,b,incl){if(!a||!b)return 0;const ms=864e5;return(incl?1:0)+Math.round((b-a)/ms)}
+function monthLabel(a,b){
+  const m1=String(a.getUTCMonth()+1).padStart(2,"0"),m2=String(b.getUTCMonth()+1).padStart(2,"0");
+  if(a.getUTCFullYear()===b.getUTCFullYear()&&a.getUTCMonth()===b.getUTCMonth())return`Monat ${m1}.${a.getUTCFullYear()}`;
+  if(a.getUTCFullYear()!==b.getUTCFullYear())return`Zeitraum ${m1}.${a.getUTCFullYear()} – ${m2}.${b.getUTCFullYear()}`;
+  return`Monat ${m1}-${m2}.${a.getUTCFullYear()}`;
+}
+
+// ---- Default Extras ----
+const DEF_EXTRAS = {xmasOn:false,xmasVal:100,newyearOn:false,newyearVal:100,travelOn:false,travelVal:300,svsOn:false,svsVal:341.70};
+
+// ---- Default State ----
+const DEF_STATE = {
+  version: SCHEMA_VER,
+  shared:{},       // sharedId → {address,bankName,iban,bic,payNote,logoData,logoFit}
+  persons:[],      // {id,sharedId,name,email,phone}
+  teams:[],        // {id,sharedId,name,memberIds,activeMemberId,email,phone}
+  clients:[],      // {id,name,address,email,phone,phone2,notes}
+  assignments:[],  // {id,clientId,personId,dailyRate,extras,isActive,createdAt,notes}
+  history:[],      // immutable invoice snapshots
+  currentInvoice:{ // working invoice state
+    assignmentId:null,
+    invoiceDate:isoToday(),invoiceNo:"",
+    startDate:isoFOM(),endDate:isoLOM(),
+    includeLastDay:true,payDays:3
+  },
+  ui:{selectedClientId:null,activeTab:"invoice"}
+};
+
+function createShared(src){
+  return{
+    address:src?.address||"",bankName:src?.bankName||"",iban:src?.iban||"",bic:src?.bic||"",
+    payNote:src?.payNote||"Zahlbar sofort nach Rechnungserhalt ohne Abzug.",
+    logoData:src?.logoData||null,logoFit:src?.logoFit||"contain"
+  };
+}
+
+/* ---- Bootstrap ---- */
+function bootstrap(){
+  const s=clone(DEF_STATE);
+  const sid=uid();
+  s.shared[sid]=createShared({address:"Personenbetreuung\nZuckerhutsiedlung 7\n2640 Gloggnitz",bankName:"Bank",iban:"AT..",bic:"SPNGAT21XXX"});
+  const p1={id:uid(),sharedId:sid,name:"Regina Zack",email:"",phone:""};
+  s.persons.push(p1);
+  const c1={id:uid(),name:"Frau Palma Szőcs",address:"Zuckerhutsiedlung 7\n2640 Gloggnitz",email:"",phone:"",phone2:"",notes:""};
+  s.clients.push(c1);
+  // Create default assignment
+  const a1={id:uid(),clientId:c1.id,personId:p1.id,dailyRate:85,extras:clone(DEF_EXTRAS),isActive:true,createdAt:now(),notes:""};
+  s.assignments.push(a1);
+  s.ui.selectedClientId=c1.id;
+  s.currentInvoice.assignmentId=a1.id;
+  return s;
+}
+
+/* ---- Migration ---- */
+function migrate(raw){
+  const s=Object.assign(clone(DEF_STATE),raw||{});
+  s.shared=s.shared||{};
+  s.persons=s.persons||[];
+  s.teams=s.teams||[];
+  s.clients=s.clients||[];
+  s.assignments=s.assignments||[];
+  s.history=s.history||[];
+  s.currentInvoice=Object.assign(clone(DEF_STATE.currentInvoice),s.currentInvoice||{});
+  s.ui=Object.assign(clone(DEF_STATE.ui),s.ui||{});
+
+  // Normalize shared
+  for(const id in s.shared){
+    const sh=s.shared[id];
+    sh.address=sh.address||"";sh.bankName=sh.bankName||"";
+    sh.iban=sh.iban||"";sh.bic=sh.bic||"";
+    sh.payNote=sh.payNote||"Zahlbar sofort nach Rechnungserhalt ohne Abzug.";
+    sh.logoFit=sh.logoFit||"contain";
+  }
+
+  // Normalize clients (add phone fields)
+  s.clients.forEach(c=>{
+    c.phone=c.phone||"";c.phone2=c.phone2||"";c.notes=c.notes||"";
+  });
+
+  // Normalize assignments
+  s.assignments.forEach(a=>{
+    a.dailyRate=a.dailyRate??85;
+    a.extras=Object.assign(clone(DEF_EXTRAS),a.extras||{});
+    if(a.isActive===undefined)a.isActive=true;
+    a.createdAt=a.createdAt||now();
+    a.notes=a.notes||"";
+  });
+
+  // Normalize teams
+  s.teams.forEach(t=>{
+    if(!t.activeMemberId&&t.memberIds?.length)t.activeMemberId=t.memberIds[0];
+  });
+
+  // Normalize history
+  s.history.forEach(h=>{
+    h.status=h.status||"finalized";
+  });
+
+  s.version=SCHEMA_VER;
+  return s;
+}
+
+/* ---- Validation ---- */
+function validate(s){
+  if(!s||typeof s!=="object")return false;
+  if(!Array.isArray(s.persons)||!Array.isArray(s.clients)||!Array.isArray(s.assignments))return false;
+  if(typeof s.shared!=="object")return false;
+  return true;
+}
+
+/* ---- Referential Integrity ---- */
+function enforceRI(s){
+  // Remove assignments pointing to deleted persons/clients
+  const pids=new Set(s.persons.map(p=>p.id));
+  const cids=new Set(s.clients.map(c=>c.id));
+  s.assignments=s.assignments.filter(a=>pids.has(a.personId)&&cids.has(a.clientId));
+  // Clean team memberIds
+  s.teams.forEach(t=>{
+    t.memberIds=(t.memberIds||[]).filter(id=>pids.has(id));
+    if(t.activeMemberId&&!pids.has(t.activeMemberId))t.activeMemberId=t.memberIds[0]||null;
+  });
+  s.teams=s.teams.filter(t=>t.memberIds.length>=2);
+  return s;
+}
+
+/* ---- Load / Save ---- */
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw)return bootstrap();
+    const parsed=JSON.parse(raw);
+    if(!validate(parsed)){console.warn("Ungültige Daten");return bootstrap()}
+    return enforceRI(migrate(parsed));
+  }catch(e){console.error("Ladefehler:",e);return bootstrap()}
+}
+
+function saveState(){
+  try{
+    const json=JSON.stringify(state);
+    const sizeMB=json.length/(1024*1024);
+    if(sizeMB>MAX_STORAGE_MB){
+      console.warn(`Datengröße: ${sizeMB.toFixed(2)} MB — nahe am Limit`);
+    }
+    localStorage.setItem(STORAGE_KEY,json);
+    setSaveState(false);
+    updateStorageInfo();
+  }catch(e){
+    console.error("Speicherfehler:",e);
+    if(e.name==="QuotaExceededError"){
+      alert("Speicherplatz voll! Bitte entfernen Sie große Logos oder erstellen Sie ein JSON-Backup und löschen Sie alte Historieneinträge.");
+    }
+  }
+}
+
+let state=loadState();
+let _st=null;
+function debouncedSave(){setSaveState(true);clearTimeout(_st);_st=setTimeout(saveState,DEBOUNCE_MS)}
+
+function setSaveState(dirty){
+  const el=$("saveState");
+  el.textContent=dirty?"Ungespeichert":"Gespeichert";
+  el.className="badge "+(dirty?"b-dirty":"b-ok");
+}
+
+function updateStorageInfo(){
+  const raw=localStorage.getItem(STORAGE_KEY)||"";
+  const kb=(raw.length/1024).toFixed(1);
+  const mb=(raw.length/(1024*1024)).toFixed(2);
+  const hc=state.history.length;
+  const ac=state.assignments.length;
+  const pc=state.persons.length;
+  const cc=state.clients.length;
+  $("storageInfo").innerHTML=
+    `<b>Speicherverbrauch:</b> ${kb} KB (${mb} MB)<br>`+
+    `<b>Personen:</b> ${pc} | <b>Kunden:</b> ${cc} | <b>Zuweisungen:</b> ${ac} | <b>Historie:</b> ${hc} Einträge`;
+}
+
+/* =================================================================
+   ENTITY GETTERS
+   ================================================================= */
+function getClient(id){return state.clients.find(c=>c.id===(id||state.ui.selectedClientId))||null}
+function getPerson(id){return state.persons.find(p=>p.id===id)||null}
+function getShared(sid){return state.shared[sid]||null}
+function getAssignment(id){return state.assignments.find(a=>a.id===id)||null}
+function getAssignmentsForClient(cid){return state.assignments.filter(a=>a.clientId===cid&&a.isActive)}
+function getActiveAssignment(){return getAssignment(state.currentInvoice.assignmentId)}
+
+// The person that appears on the invoice
+function getInvoicePerson(){
+  const a=getActiveAssignment();
+  if(!a)return null;
+  return getPerson(a.personId);
+}
+
+/* =================================================================
+   TAB NAVIGATION
+   ================================================================= */
+function switchTab(tabName){
+  const tab=document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if(tab) tab.click();
+}
+
+function initTabs(){
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+      tab.classList.add("active");
+      const id="panel"+tab.dataset.tab.charAt(0).toUpperCase()+tab.dataset.tab.slice(1);
+      const panel=document.getElementById(id);
+      if(panel)panel.classList.add("active");
+      state.ui.activeTab=tab.dataset.tab;
+      refreshCurrentTab();
+    });
+  });
+}
+
+function refreshCurrentTab(){
+  const t=state.ui.activeTab;
+  if(t==="invoice")refreshInvoiceTab();
+  if(t==="clients")refreshClientsTab();
+  if(t==="persons")refreshPersonsTab();
+  if(t==="history")refreshHistoryTab();
+  if(t==="settings")updateStorageInfo();
+}
+
+/* =================================================================
+   TAB: RECHNUNG (Invoice)
+   ================================================================= */
+function refreshInvoiceTab(){
+  // Client selector
+  const sel=$("selClient");
+  const prev=sel.value;
+  sel.innerHTML="";
+  state.clients.forEach(c=>{
+    const o=document.createElement("option");
+    o.value=c.id;o.textContent=c.name||"(ohne Name)";
+    sel.appendChild(o);
+  });
+  sel.value=state.ui.selectedClientId||"";
+  if(!sel.value&&state.clients[0])sel.value=state.clients[0].id;
+  state.ui.selectedClientId=sel.value;
+
+  // Assignments for this client
+  refreshAssignmentList();
+  loadInvoiceForm();
+  renderPaper();
+}
+
+function refreshAssignmentList(){
+  const cid=state.ui.selectedClientId;
+  const assigns=getAssignmentsForClient(cid);
+  const list=$("assignList");
+  list.innerHTML="";
+
+  if(!assigns.length){
+    list.innerHTML='<div class="hint">Keine Betreuer zugewiesen. Erstellen Sie eine neue Zuweisung.</div>';
+    $("cardInvData").style.display="none";
+    return;
+  }
+
+  assigns.forEach(a=>{
+    const p=getPerson(a.personId);
+    const div=document.createElement("div");
+    div.className="assign-card"+(state.currentInvoice.assignmentId===a.id?" selected":"");
+    div.innerHTML=`<div class="name">${esc(p?.name||"Unbekannt")}</div><div class="meta">Tagessatz: ${fmtMoney(a.dailyRate)} € · Seit: ${a.createdAt?.slice(0,10)||"—"}</div>`;
+    div.onclick=()=>{
+      state.currentInvoice.assignmentId=a.id;
+      debouncedSave();
+      refreshAssignmentList();
+      loadInvoiceForm();
+      renderPaper();
+    };
+    list.appendChild(div);
+  });
+
+  // Ensure we have a valid selection
+  const cur=getActiveAssignment();
+  if(!cur&&assigns.length){
+    state.currentInvoice.assignmentId=assigns[0].id;
+    refreshAssignmentList();
+  }
+
+  $("cardInvData").style.display=cur?"block":"none";
+}
+
+function loadInvoiceForm(){
+  const inv=state.currentInvoice;
+  const a=getActiveAssignment();
+  if(!a)return;
+
+  $("invoiceDate").value=inv.invoiceDate||isoToday();
+  $("invoiceNo").value=inv.invoiceNo||"";
+  $("startDate").value=inv.startDate||isoFOM();
+  $("endDate").value=inv.endDate||isoLOM();
+  $("includeLastDay").checked=inv.includeLastDay!==false;
+  $("payDays").value=inv.payDays??3;
+  $("dailyRate").value=a.dailyRate??85;
+
+  const s=parseISO(inv.startDate),e=parseISO(inv.endDate);
+  if(s&&e)$("dayCount").value=dayDiff(s,e,inv.includeLastDay);
+
+  const ex=a.extras||{};
+  $("xmasOn").checked=!!ex.xmasOn;$("xmasVal").value=ex.xmasVal??100;
+  $("newyearOn").checked=!!ex.newyearOn;$("newyearVal").value=ex.newyearVal??100;
+  $("travelOn").checked=!!ex.travelOn;$("travelVal").value=ex.travelVal??300;
+  $("svsOn").checked=!!ex.svsOn;$("svsVal").value=ex.svsVal??341.70;
+}
+
+function commitInvoiceForm(src){
+  const inv=state.currentInvoice;
+  const a=getActiveAssignment();
+  if(!a)return;
+
+  inv.invoiceDate=$("invoiceDate").value||isoToday();
+  inv.invoiceNo=$("invoiceNo").value.trim();
+  inv.includeLastDay=$("includeLastDay").checked;
+  inv.payDays=Math.max(0,parseInt($("payDays").value||"0",10));
+
+  const startVal=$("startDate").value;
+  const endVal=$("endDate").value;
+  const dayVal=parseInt($("dayCount").value||"0",10);
+  const incl=inv.includeLastDay;
+
+  if(src==="dayCount"){
+    const s=parseISO(startVal);
+    if(s&&dayVal>0){const e=new Date(s);e.setUTCDate(e.getUTCDate()+(incl?dayVal-1:dayVal));inv.endDate=e.toISOString().slice(0,10);$("endDate").value=inv.endDate;}
+  }else{
+    inv.startDate=startVal;inv.endDate=endVal;
+    const s=parseISO(startVal),e=parseISO(endVal);
+    if(s&&e)$("dayCount").value=dayDiff(s,e,incl);
+  }
+
+  // Assignment-specific data
+  a.dailyRate=parseMoneyInput($("dailyRate").value);
+  a.extras={
+    xmasOn:$("xmasOn").checked,xmasVal:parseMoneyInput($("xmasVal").value),
+    newyearOn:$("newyearOn").checked,newyearVal:parseMoneyInput($("newyearVal").value),
+    travelOn:$("travelOn").checked,travelVal:parseMoneyInput($("travelVal").value),
+    svsOn:$("svsOn").checked,svsVal:parseMoneyInput($("svsVal").value)
+  };
+
+  debouncedSave();
+  renderPaper();
+}
+
+/* =================================================================
+   TAB: KUNDEN (Clients)
+   ================================================================= */
+function refreshClientsTab(){
+  const sel=$("selClientMgmt");
+  sel.innerHTML="";
+  state.clients.forEach(c=>{
+    const o=document.createElement("option");o.value=c.id;o.textContent=c.name||"(ohne Name)";sel.appendChild(o);
+  });
+  if(state.ui.selectedClientId)sel.value=state.ui.selectedClientId;
+  if(!sel.value&&state.clients[0])sel.value=state.clients[0].id;
+  loadClientForm(sel.value);
+  renderClientStats(sel.value);
+}
+
+function loadClientForm(cid){
+  const c=getClient(cid);if(!c)return;
+  $("clientName").value=c.name||"";
+  $("clientAddress").value=c.address||"";
+  $("clientEmail").value=c.email||"";
+  $("clientPhone").value=c.phone||"";
+  $("clientPhone2").value=c.phone2||"";
+  $("clientNotes").value=c.notes||"";
+
+  // Phone action buttons
+  const pa=$("clientPhoneActions");pa.innerHTML="";
+  if(c.phone){
+    pa.innerHTML+=`<a href="tel:${esc(c.phone)}" class="btn btn-a phone-link"><span class="phone-icon">📞</span> ${esc(c.phone)} anrufen</a>`;
+  }
+  if(c.phone2){
+    pa.innerHTML+=`<a href="tel:${esc(c.phone2)}" class="btn phone-link"><span class="phone-icon">📞</span> ${esc(c.phone2)} anrufen</a>`;
+  }
+}
+
+function commitClientForm(){
+  const cid=$("selClientMgmt").value;
+  const c=getClient(cid); if(!c) return;
+
+  // IMPORTANT:
+  // Do NOT trim on every keystroke. Trimming during "input" events makes it *feel*
+  // like the spacebar is broken because trailing spaces get removed immediately.
+  // We keep the raw value while typing, and normalize on blur (see bind()).
+  c.name=$("clientName").value;
+  c.address=$("clientAddress").value;
+  c.email=$("clientEmail").value;
+  c.phone=$("clientPhone").value;
+  c.phone2=$("clientPhone2").value;
+  c.notes=$("clientNotes").value;
+
+  debouncedSave();
+
+  // Lightweight UI sync (no full form reload → preserves caret position)
+  setSelectOptionText("selClient", cid, c.name||"(ohne Name)");
+  setSelectOptionText("selClientMgmt", cid, c.name||"(ohne Name)");
+  renderPaper();
+}
+
+function renderClientStats(cid){
+  const hist=state.history.filter(h=>h.clientId===cid&&h.status!=="cancelled");
+  const cont=$("clientStatsContent");
+  if(!hist.length){cont.innerHTML='<div class="hint">Noch keine Rechnungen für diesen Kunden.</div>';return}
+  const totalAmount=hist.reduce((s,h)=>s+h.grandTotal,0);
+  const totalDays=hist.reduce((s,h)=>s+h.days,0);
+  const persons=[...new Set(hist.map(h=>h.personName))];
+  cont.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${hist.length}</div><div class="stat-label">Rechnungen</div></div>
+      <div class="stat-box"><div class="stat-val">${fmtMoney(totalAmount)} €</div><div class="stat-label">Gesamtbetrag</div></div>
+      <div class="stat-box"><div class="stat-val">${totalDays}</div><div class="stat-label">Betreuungstage</div></div>
+      <div class="stat-box"><div class="stat-val">${persons.length}</div><div class="stat-label">Betreuer</div></div>
+    </div>
+    <div style="margin-top:10px" class="hint"><b>Bisherige Betreuer:</b> ${persons.map(esc).join(", ")}</div>`;
+}
+
+/* =================================================================
+   TAB: BETREUER (Persons)
+   ================================================================= */
+function refreshPersonsTab(){
+  const sel=$("selPerson");sel.innerHTML="";
+
+  if(state.persons.length){
+    const g=document.createElement("optgroup");g.label="Einzelpersonen";
+    state.persons.forEach(p=>{const o=document.createElement("option");o.value="person:"+p.id;o.textContent=p.name||"(ohne Name)";g.appendChild(o)});
+    sel.appendChild(g);
+  }
+  if(state.teams.length){
+    const g=document.createElement("optgroup");g.label="Teams";
+    state.teams.forEach(t=>{const o=document.createElement("option");o.value="team:"+t.id;o.textContent=t.name||"(Team)";g.appendChild(o)});
+    sel.appendChild(g);
+  }
+
+  if(sel.options.length&&!sel.value)sel.selectedIndex=0;
+  loadPersonForm();
+}
+
+function parsePersonSel(){
+  const v=$("selPerson").value||"";
+  const[type,id]=v.split(":");return{type:type||"person",id:id||""};
+}
+
+function loadPersonForm(){
+  const sel=parsePersonSel();
+  const isTeam=sel.type==="team";
+  const ent=isTeam?state.teams.find(t=>t.id===sel.id):getPerson(sel.id);
+  if(!ent)return;
+  const sh=getShared(ent.sharedId);
+
+  $("personName").value=ent.name||"";
+  $("personEmail").value=ent.email||"";
+  $("personPhone").value=ent.phone||"";
+  $("personAddress").value=sh?.address||"";
+  $("bankName").value=sh?.bankName||"";
+  $("iban").value=sh?.iban||"";
+  $("bic").value=sh?.bic||"";
+  $("payNote").value=sh?.payNote||"";
+  $("logoFit").value=sh?.logoFit||"contain";
+
+  const data=sh?.logoData;
+  const fit=sh?.logoFit==="cover"?"cover":"contain";
+  const mini=$("miniLogoImg"),plogo=$("paperLogo");
+  if(data){mini.src=data;mini.style.display="block";mini.style.objectFit=fit}else{mini.removeAttribute("src");mini.style.display="none"}
+
+  // Team members
+  const tw=$("teamMemberWrap");
+  const tl=$("personTeamsList");
+  if(isTeam&&ent.memberIds?.length){
+    tw.style.display="block";
+    const ms=$("teamMemberSel");ms.innerHTML="";
+    ent.memberIds.forEach(mid=>{const p=getPerson(mid);if(!p)return;const o=document.createElement("option");o.value=p.id;o.textContent=p.name||"?";ms.appendChild(o)});
+    ms.value=ent.activeMemberId||ent.memberIds[0];
+    tl.innerHTML="<b>Mitglieder:</b> "+ent.memberIds.map(id=>esc(getPerson(id)?.name||"?")).join(", ");
+  }else{
+    tw.style.display="none";
+    // Show teams this person belongs to
+    const myTeams=state.teams.filter(t=>t.memberIds?.includes(sel.id));
+    tl.innerHTML=myTeams.length?myTeams.map(t=>`<div style="margin:4px 0">• ${esc(t.name)}</div>`).join(""):"Keine Teams.";
+  }
+}
+
+function commitPersonForm(){
+  const sel=parsePersonSel();
+  const isTeam=sel.type==="team";
+  const ent=isTeam?state.teams.find(t=>t.id===sel.id):getPerson(sel.id);
+  if(!ent)return;
+
+  // Same rule as clients: keep raw while typing; normalize on blur.
+  ent.name=$("personName").value;
+  ent.email=$("personEmail").value;
+  ent.phone=$("personPhone").value;
+
+  const sh=state.shared[ent.sharedId]||(state.shared[ent.sharedId]=createShared());
+  sh.address=$("personAddress").value;
+  sh.bankName=$("bankName").value;
+  sh.iban=$("iban").value;
+  sh.bic=$("bic").value;
+  sh.payNote=$("payNote").value;
+  sh.logoFit=$("logoFit").value==="cover"?"cover":"contain";
+
+  debouncedSave();
+
+  // Lightweight label sync (no full refresh → preserves caret)
+  const label=ent.name||"(ohne Name)";
+  setSelectOptionText("selPerson", isTeam?("team:"+ent.id):ent.id, label);
+
+  renderPaper();
+}
+
+/* =================================================================
+   TAB: HISTORIE (History)
+   ================================================================= */
+function refreshHistoryTab(){
+  // Populate filters
+  const fc=$("histFilterClient");
+  const prevC=fc.value;fc.innerHTML='<option value="">Alle Kunden</option>';
+  state.clients.forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.name;fc.appendChild(o)});
+  fc.value=prevC;
+
+  const fp=$("histFilterPerson");
+  const prevP=fp.value;fp.innerHTML='<option value="">Alle Betreuer</option>';
+  state.persons.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=p.name;fp.appendChild(o)});
+  fp.value=prevP;
+
+  renderHistoryTable();
+}
+
+function renderHistoryTable(){
+  const clientFilter=$("histFilterClient").value;
+  const personFilter=$("histFilterPerson").value;
+  const fromDate=parseISO($("histFrom").value);
+  const toDate=parseISO($("histTo").value);
+  const byInvDate=$("histByInvDate").checked;
+
+  let filtered=state.history.slice();
+  if(clientFilter)filtered=filtered.filter(h=>h.clientId===clientFilter);
+  if(personFilter)filtered=filtered.filter(h=>h.personId===personFilter);
+  if(byInvDate){
+    if(fromDate)filtered=filtered.filter(h=>{const d=parseISO(h.invoiceDate);return d&&d>=fromDate});
+    if(toDate)filtered=filtered.filter(h=>{const d=parseISO(h.invoiceDate);return d&&d<=toDate});
+  }else{
+    if(fromDate)filtered=filtered.filter(h=>{const d=parseISO(h.startDate);return d&&d>=fromDate});
+    if(toDate)filtered=filtered.filter(h=>{const d=parseISO(h.endDate);return d&&d<=toDate});
+  }
+
+  filtered.sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+
+  $("histCount").textContent=filtered.length;
+
+  // Stats
+  const active=filtered.filter(h=>h.status!=="cancelled");
+  const totalAmount=active.reduce((s,h)=>s+h.grandTotal,0);
+  const totalDays=active.reduce((s,h)=>s+h.days,0);
+  const paid=active.filter(h=>h.status==="paid");
+  $("histStats").innerHTML=`
+    <div class="stat-box"><div class="stat-val">${active.length}</div><div class="stat-label">Rechnungen</div></div>
+    <div class="stat-box"><div class="stat-val">${fmtMoney(totalAmount)} €</div><div class="stat-label">Gesamtbetrag</div></div>
+    <div class="stat-box"><div class="stat-val">${totalDays}</div><div class="stat-label">Betreuungstage</div></div>
+    <div class="stat-box"><div class="stat-val">${paid.length}</div><div class="stat-label">Bezahlt</div></div>`;
+
+  // Table
+  const tbody=$("histBody");tbody.innerHTML="";
+  if(!filtered.length){
+    const tr=document.createElement("tr");
+    tr.innerHTML='<td colspan="9" class="hint" style="text-align:center;padding:20px">Keine Einträge gefunden.</td>';
+    tbody.appendChild(tr);return;
+  }
+
+  filtered.forEach(h=>{
+    const tr=document.createElement("tr");
+    const stClass=h.status==="paid"?"st-paid":h.status==="cancelled"?"st-cancel":"st-final";
+    const stLabel=h.status==="paid"?"Bezahlt":h.status==="cancelled"?"Storniert":"Offen";
+    const sDate=parseISO(h.startDate),eDate=parseISO(h.endDate);
+    tr.innerHTML=`
+      <td class="mono">${esc(h.invoiceNo)}</td>
+      <td>${esc(h.invoiceDate?fmtDE(parseISO(h.invoiceDate)):"")}</td>
+      <td>${esc(h.clientName)}</td>
+      <td>${esc(h.personName)}</td>
+      <td>${sDate?fmtDE(sDate):""}–${eDate?fmtDE(eDate):""}</td>
+      <td class="mono">${h.days}</td>
+      <td class="mono">${fmtMoney(h.grandTotal)} €</td>
+      <td><span class="status-pill ${stClass}">${stLabel}</span></td>
+      <td>
+        <button class="btn" style="padding:4px 8px;font-size:10px" data-hid="${h.id}" data-action="toggle">${h.status==="paid"?"↩ Öffnen":"✓ Bezahlt"}</button>
+        <button class="btn btn-d" style="padding:4px 8px;font-size:10px" data-hid="${h.id}" data-action="cancel">${h.status==="cancelled"?"Wiederherstellen":"Stornieren"}</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Event delegation for history actions
+  tbody.querySelectorAll("button[data-hid]").forEach(btn=>{
+    btn.onclick=()=>{
+      const hid=btn.dataset.hid;
+      const action=btn.dataset.action;
+      const entry=state.history.find(h=>h.id===hid);
+      if(!entry)return;
+      if(action==="toggle"){
+        entry.status=entry.status==="paid"?"finalized":"paid";
+      }else if(action==="cancel"){
+        entry.status=entry.status==="cancelled"?"finalized":"cancelled";
+      }
+      debouncedSave();
+      renderHistoryTable();
+    };
+  });
+}
+
+/* =================================================================
+   INVOICE SNAPSHOT — Single source of truth for all outputs
+   ================================================================= */
+function computeInvoiceSnapshot(){
+  const a=getActiveAssignment();
+  const person=getInvoicePerson();
+  const client=getClient(state.ui.selectedClientId);
+  const sh=person?getShared(person.sharedId):null;
+  const inv=state.currentInvoice;
+
+  const start=parseISO(inv.startDate), end=parseISO(inv.endDate);
+  const dateErr=!start||!end||end<start;
+  const incl=inv.includeLastDay;
+  const days=dateErr?0:dayDiff(start,end,incl);
+  const rate=Number(a?.dailyRate||0);
+  const care=days*rate;
+
+  let total=care;
+  const extras=[];
+  if(!dateErr&&a){
+    const ex=a.extras||{};
+    const addE=(on,label,val,detail)=>{if(!on)return;const v=Number(val||0);total+=v;extras.push({label,amount:v,detail:detail||""})};
+    addE(ex.xmasOn,"Weihnachtsgeld",ex.xmasVal,"");
+    addE(ex.newyearOn,"Silvestergeld",ex.newyearVal,"");
+    addE(ex.travelOn,"Fahrtkosten",ex.travelVal,"Hin- und Rückfahrt");
+    addE(ex.svsOn,"SVS",ex.svsVal,`für ${days} Tage`);
+  }
+
+  const invDate=parseISO(inv.invoiceDate)||new Date();
+  const payDays=Math.max(0,parseInt(inv.payDays||0,10));
+  const deadline=new Date(invDate);deadline.setUTCDate(deadline.getUTCDate()+payDays);
+
+  return{
+    assignment:a, person, client, sh, inv,
+    start, end, dateErr, incl, days, rate, care,
+    extras, total,
+    invDate, payDays, deadline,
+    monthLbl: (!dateErr&&start&&end) ? monthLabel(start,end) : ""
+  };
+}
+
+/* =================================================================
+   PAPER RENDERING
+   ================================================================= */
+function renderPaper(){
+  const snap=computeInvoiceSnapshot();
+  const{assignment:a,person,client,sh,inv,start,end,dateErr,days,rate,care,extras,total,invDate,deadline,monthLbl}=snap;
+
+  $("dateError").style.display=dateErr?"block":"none";
+
+  // Client address (right)
+  const adr=[];if(client?.name)adr.push(client.name);if(client?.address)adr.push(...String(client.address).split("\n"));
+  $("paperAddrRight").innerHTML=adr.map(esc).join("<br>");
+
+  // Sender
+  $("paperFromBlock").innerHTML=`<b>Leistungserbringer / Betreuer/in:</b><br><br><b>${esc(person?.name||"")}</b><br>${esc(sh?.address||"").replace(/\n/g,"<br>")}`;
+
+  // Meta
+  $("paperMetaLeft").innerHTML=`<b>Rechnungs-Nr.:</b> ${esc(inv.invoiceNo||"")}`;
+  $("paperMetaRight").innerHTML=`<b>Rechnungsdatum:</b> ${esc(fmtDE(invDate))}`;
+
+  // Logo
+  const pl=$("paperLogo");
+  if(sh?.logoData){pl.src=sh.logoData;pl.style.display="block";pl.style.objectFit=sh.logoFit==="cover"?"cover":"contain"}
+  else{pl.removeAttribute("src");pl.style.display="none"}
+
+  // Table
+  const tbody=$("paperTbody");tbody.innerHTML="";
+
+  if(!dateErr&&a){
+    tbody.appendChild(mkRow(
+      `<div><b>${esc(monthLbl)}</b></div>`,
+      `<div>${esc(fmtDE(start))} – ${esc(fmtDE(end))}</div><br><div>${days} Tage × ${esc(fmtMoney(rate))} € = <b>${esc(fmtMoney(care))} €</b></div>`,
+      `${esc(fmtMoney(care))} €`
+    ));
+    extras.forEach(x=>{
+      tbody.appendChild(mkRow("",`<div>${esc(x.label)}${x.detail?" ("+esc(x.detail)+")":""}</div>`,`${esc(fmtMoney(x.amount))} €`));
+    });
+  }else if(dateErr){
+    tbody.appendChild(mkRow("",`<span style="color:#b00020"><b>Fehler:</b> Leistungsende liegt vor Leistungsbeginn.</span>`,""));
+  }else{
+    tbody.appendChild(mkRow("","<span style='color:#888'>Bitte wählen Sie einen Betreuer aus.</span>",""));
+  }
+
+  $("paperPayLine").textContent=`bezahlen bis ${fmtDE(deadline)}`;
+  $("paperTotalBox").textContent=`${fmtMoney(total)} €`;
+
+  const bk=[];bk.push("<b>Bankverbindung:</b>");
+  if(sh?.bankName)bk.push(`Bank: ${esc(sh.bankName)}`);
+  if(sh?.iban)bk.push(`IBAN: ${esc(sh.iban)}`);
+  if(sh?.bic)bk.push(`BIC: ${esc(sh.bic)}`);
+  bk.push("");if(sh?.payNote)bk.push(esc(sh.payNote));
+  $("paperBank").innerHTML=bk.join("<br>");
+}
+
+function mkRow(c1,c2,c3){
+  const tr=document.createElement("tr");
+  ["col1","col2","col3"].forEach((cls,i)=>{const td=document.createElement("td");td.className=cls;td.innerHTML=[c1,c2,c3][i]||"";tr.appendChild(td)});
+  return tr;
+}
+
+/* =================================================================
+   CRUD OPERATIONS
+   ================================================================= */
+// -- New Assignment (modal-based) --
+function openAssignModal(){
+  const cid=state.ui.selectedClientId;
+  if(!cid){alert("Bitte wählen Sie zuerst einen Kunden aus.");return}
+  if(!state.persons.length){alert("Bitte legen Sie zuerst einen Betreuer an.");return}
+  const sel=$("assignPersonSel");sel.innerHTML="";
+  state.persons.forEach(p=>{
+    const o=document.createElement("option");o.value=p.id;o.textContent=p.name||"(ohne Name)";sel.appendChild(o);
+  });
+  const m=$("modalAssign");m.classList.add("open");m.setAttribute("aria-hidden","false");
+}
+function closeAssignModal(){const m=$("modalAssign");m.classList.remove("open");m.setAttribute("aria-hidden","true")}
+function saveAssignModal(){
+  const cid=state.ui.selectedClientId;
+  const pid=$("assignPersonSel").value;
+  if(!pid){alert("Bitte Betreuer auswählen.");return}
+  if(state.assignments.some(a=>a.clientId===cid&&a.personId===pid&&a.isActive)){
+    alert("Dieser Betreuer ist bereits zugewiesen.");return;
+  }
+  const a={id:uid(),clientId:cid,personId:pid,dailyRate:85,extras:clone(DEF_EXTRAS),isActive:true,createdAt:now(),notes:""};
+  state.assignments.push(a);
+  state.currentInvoice.assignmentId=a.id;
+  debouncedSave();
+  closeAssignModal();
+  refreshInvoiceTab();
+}
+function bindAssignModal(){
+  const m=$("modalAssign");if(!m)return;
+  m.addEventListener("click",e=>{if(e.target?.dataset?.close)closeAssignModal()});
+  $("btnCloseAssignModal").addEventListener("click",closeAssignModal);
+  $("btnCancelAssignModal").addEventListener("click",closeAssignModal);
+  $("btnSaveAssignModal").addEventListener("click",saveAssignModal);
+  window.addEventListener("keydown",e=>{if(e.key==="Escape"&&m.classList.contains("open")){e.preventDefault();closeAssignModal()}});
+}
+function newAssignment(){openAssignModal()}
+
+// -- Remove Assignment --
+function removeAssignment(){
+  const a=getActiveAssignment();
+  if(!a)return;
+  if(!confirm(`Zuweisung von "${getPerson(a.personId)?.name||"?"}" wirklich entfernen?`))return;
+  a.isActive=false;
+  state.currentInvoice.assignmentId=null;
+  debouncedSave();
+  refreshInvoiceTab();
+}
+
+// -- New/Delete Person --
+function newPerson(){
+  const sid=uid();
+  const curSel=parsePersonSel();
+  const curEnt=curSel.type==="person"?getPerson(curSel.id):null;
+  const curSh=curEnt?getShared(curEnt.sharedId):null;
+  state.shared[sid]=createShared(curSh?{logoData:curSh.logoData,logoFit:curSh.logoFit}:{});
+  const p={id:uid(),sharedId:sid,name:"Neue Person",email:"",phone:""};
+  state.persons.push(p);
+  debouncedSave();refreshPersonsTab();
+  $("selPerson").value="person:"+p.id;loadPersonForm();
+}
+
+function deletePerson(){
+  const sel=parsePersonSel();
+  if(!sel.id)return;
+  if(sel.type==="team"){
+    if(!confirm("Team wirklich löschen?"))return;
+    state.teams=state.teams.filter(t=>t.id!==sel.id);
+  }else{
+    if(state.persons.length<=1){alert("Mindestens 1 Person muss verbleiben.");return}
+    if(!confirm("Person wirklich löschen? Zugehörige Zuweisungen werden deaktiviert."))return;
+    state.persons=state.persons.filter(p=>p.id!==sel.id);
+    enforceRI(state);
+  }
+  debouncedSave();refreshPersonsTab();
+}
+
+function newTeam(){
+  if(state.persons.length<2){alert("Für ein Team werden mindestens 2 Personen benötigt.");return}
+  const names=state.persons.map((p,i)=>`${i+1}. ${p.name||"?"}`).join("\n");
+  const input=prompt(`Mitglieder-Nummern kommagetrennt eingeben:\n\n${names}\n\nBeispiel: 1,2`,"1,2");
+  if(!input)return;
+  const idxs=input.split(",").map(s=>parseInt(s.trim(),10)-1).filter(i=>i>=0&&i<state.persons.length);
+  if(idxs.length<2){alert("Mindestens 2 Mitglieder.");return}
+  const mids=idxs.map(i=>state.persons[i].id);
+  const sharedId=state.persons[idxs[0]].sharedId;
+  const t={id:uid(),sharedId,name:"Team "+mids.map(id=>getPerson(id)?.name||"?").join(" & "),memberIds:mids,activeMemberId:mids[0],email:"",phone:""};
+  state.teams.push(t);
+  debouncedSave();refreshPersonsTab();
+  $("selPerson").value="team:"+t.id;loadPersonForm();
+}
+
+// -- Clients --
+function newClient(){
+  const c={id:uid(),name:"Neuer Kunde",address:"",email:"",phone:"",phone2:"",notes:""};
+  state.clients.push(c);state.ui.selectedClientId=c.id;
+  debouncedSave();refreshClientsTab();refreshInvoiceTab();
+}
+
+function deleteClient(){
+  if(state.clients.length<=1){alert("Mindestens 1 Kunde muss verbleiben.");return}
+  const cid=$("selClientMgmt").value;if(!cid)return;
+  const c=getClient(cid);
+  if(!confirm(`"${c?.name||""}" wirklich löschen? Zugehörige Zuweisungen werden deaktiviert.`))return;
+  state.clients=state.clients.filter(x=>x.id!==cid);
+  enforceRI(state);
+  state.ui.selectedClientId=state.clients[0]?.id||null;
+  debouncedSave();refreshClientsTab();refreshInvoiceTab();
+}
+
+/* =================================================================
+   FINALIZE INVOICE → HISTORY
+   ================================================================= */
+function isValidEmail(s){const v=String(s||"").trim();return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
+function isLikelyIBAN(s){const v=String(s||"").replace(/\s+/g,"").toUpperCase();return !v||/^[A-Z]{2}[0-9A-Z]{13,32}$/.test(v)}
+
+function finalizeInvoice(){
+  const snap=computeInvoiceSnapshot();
+  const{assignment:a,person,client,sh,inv,start,end,dateErr,incl,days,rate,care,extras,total}=snap;
+
+  if(!a)return;
+  if(dateErr){alert("Ungültiger Leistungszeitraum.");return}
+  if(!inv.invoiceNo){alert("Bitte Rechnungsnummer eingeben.");return}
+  if(!client?.name||!client?.address){alert("Kunde: Name und Adresse erforderlich.");return}
+  if(!sh?.address){alert("Betreuer: Adresse erforderlich.");return}
+  if(!isLikelyIBAN(sh?.iban)){alert("IBAN scheint ungültig.");return}
+  if(!isValidEmail(client?.email)){alert("E-Mail scheint ungültig.");return}
+
+  // Check duplicate invoice number
+  if(state.history.some(h=>h.invoiceNo===inv.invoiceNo&&h.status!=="cancelled")){
+    if(!confirm(`Rechnungsnummer "${inv.invoiceNo}" existiert bereits. Trotzdem fortfahren?`))return;
+  }
+
+  const entry={
+    id:uid(),
+    createdAt:now(),
+    invoiceNo:inv.invoiceNo,
+    invoiceDate:inv.invoiceDate,
+    clientId:client?.id||"",clientName:client?.name||"",clientAddress:client?.address||"",
+    personId:person?.id||"",personName:person?.name||"",personAddress:sh?.address||"",
+    startDate:inv.startDate,endDate:inv.endDate,
+    days,includeLastDay:incl,dailyRate:rate,careTotal:care,
+    extras:extras.map(x=>({label:x.label,amount:x.amount})),grandTotal:total,
+    bankSnapshot:{bankName:sh?.bankName||"",iban:sh?.iban||"",bic:sh?.bic||""},
+    payDays:inv.payDays,payNote:sh?.payNote||"",
+    status:"finalized"
+  };
+
+  state.history.push(entry);
+
+  // Auto-increment invoice number
+  const match=inv.invoiceNo.match(/(\d+)$/);
+  if(match){
+    const num=parseInt(match[1],10)+1;
+    const prefix=inv.invoiceNo.slice(0,inv.invoiceNo.length-match[1].length);
+    inv.invoiceNo=prefix+String(num).padStart(match[1].length,"0");
+    $("invoiceNo").value=inv.invoiceNo;
+  }
+
+  debouncedSave();
+  alert(`Rechnung ${entry.invoiceNo} wurde in der Historie gespeichert.`);
+  refreshHistoryTab();
+}
+
+/* =================================================================
+   LOGO
+   ================================================================= */
+async function fileToDataUrl(file){return new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(String(f.result));f.onerror=j;f.readAsDataURL(file)})}
+
+async function downscaleImageToDataUrl(file, maxW=900, quality=0.85, mime="image/jpeg"){
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  await new Promise((r,j)=>{ img.onload=r; img.onerror=j; img.src=url; });
+  const scale = Math.min(1, maxW / img.width);
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  c.getContext("2d").drawImage(img, 0, 0, w, h);
+  URL.revokeObjectURL(url);
+  return c.toDataURL(mime, quality);
+}
+
+function setLogoData(dataUrl){
+  const sel=parsePersonSel();
+  const isTeam=sel.type==="team";
+  const ent=isTeam?state.teams.find(t=>t.id===sel.id):getPerson(sel.id);
+  if(!ent)return;
+  const sh=state.shared[ent.sharedId]||(state.shared[ent.sharedId]=createShared());
+  sh.logoData=dataUrl||null;
+  debouncedSave();loadPersonForm();renderPaper();
+}
+
+function setupLogo(){
+  $("logoFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(f)setLogoData(await downscaleImageToDataUrl(f, 900, 0.85, "image/jpeg"))});
+  const drop=$("logoDrop");
+  drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("dragover")});
+  drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
+  drop.addEventListener("drop",async e=>{e.preventDefault();drop.classList.remove("dragover");const f=e.dataTransfer?.files?.[0];if(f?.type?.startsWith("image/"))setLogoData(await downscaleImageToDataUrl(f, 900, 0.85, "image/jpeg"))});
+  window.addEventListener("paste",async e=>{for(const i of(e.clipboardData?.items||[])){if(i.type?.startsWith("image/")){const f=i.getAsFile();if(f){setLogoData(await downscaleImageToDataUrl(f, 900, 0.85, "image/jpeg"));break}}}});
+  $("logoFit").addEventListener("change",commitPersonForm);
+}
+
+/* =================================================================
+   EXPORTS
+   ================================================================= */
+async function exportPDF(){
+  const name=`Rechnung_${state.currentInvoice.invoiceNo||"export"}.pdf`.replace(/[^\w\-.]+/g,"_");
+  await html2pdf().set({margin:0,filename:name,image:{type:"jpeg",quality:0.98},html2canvas:{scale:2.5,useCORS:true,logging:false,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from($("paper")).save();
+}
+
+function exportSheet(bt){
+  if(!window.XLSX){alert("XLSX-Bibliothek nicht geladen.");return}
+  const snap=computeInvoiceSnapshot();
+  const{person,client,sh,inv,start,end,dateErr,days,rate,care,extras,total,invDate,deadline,monthLbl}=snap;
+
+  const rows=[["RECHNUNG"],[""],["Rechnungs-Nr.:",inv.invoiceNo||""],["Rechnungsdatum:",fmtDE(invDate)],["bezahlen bis:",fmtDE(deadline)],[""],
+    ["Leistungserbringer:",person?.name||""],["Adresse:",(sh?.address||"").replace(/\n/g,", ")],[""],
+    ["Kunde:",client?.name||""],["Adresse:",(client?.address||"").replace(/\n/g,", ")],[""],
+    ["Leistungszeitraum","Beschreibung","Gesamtpreis"]];
+
+  if(!dateErr&&start&&end&&snap.assignment){
+    rows.push([monthLbl,`${fmtDE(start)} bis ${fmtDE(end)} — ${days} Tage × ${fmtMoney(rate)} €`,`${fmtMoney(care)} €`]);
+    extras.forEach(x=>{rows.push(["",x.detail?`${x.label} (${x.detail})`:x.label,`${fmtMoney(x.amount)} €`])});
+  }
+  rows.push([""],["Rechnungsbetrag:","",`${fmtMoney(total)} €`],[""],["Bank:",sh?.bankName||""],["IBAN:",sh?.iban||""],["BIC:",sh?.bic||""],["Hinweis:",sh?.payNote||""]);
+
+  const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(rows);ws["!cols"]=[{wch:26},{wch:70},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws,"Rechnung");
+  XLSX.writeFile(wb,`Rechnung_${inv.invoiceNo||"export"}.${bt}`.replace(/[^\w\-.]+/g,"_"),{bookType:bt});
+}
+
+function exportJSON(){
+  const payload={
+    app:"RechnungEnterprise",
+    schema:SCHEMA_VER,
+    exportedAt:new Date().toISOString(),
+    state
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`rechnung_backup_${isoToday()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+function importJSON(){
+  const input=document.createElement("input");
+  input.type="file";
+  input.accept=".json,application/json";
+  input.onchange=e=>{
+    const file=e.target.files[0];
+    if(!file) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const raw=JSON.parse(String(ev.target.result||""));
+        const incoming = (raw && raw.app==="RechnungEnterprise" && raw.state) ? raw.state : raw;
+
+        if(!validate(incoming)) throw new Error("Ungültiges Format / Schema");
+
+        const mode = confirm(
+          "Import-Modus auswählen:\n\n" +
+          "OK = ERSETZEN (alles wird durch die Datei ersetzt)\n" +
+          "Abbrechen = MERGEN (bestehende Daten bleiben, neue/aktualisierte werden hinzugefügt)"
+        ) ? "replace" : "merge";
+
+        if(mode==="replace"){
+          state = enforceRI(migrate(incoming));
+        }else{
+          state = enforceRI(mergeStates(state, migrate(incoming)));
+        }
+
+        debouncedSave();
+        loadAll();
+        alert("Import abgeschlossen ✅");
+      }catch(er){
+        alert("Fehler beim Import: " + (er?.message||String(er)));
+      }
+    };
+    r.readAsText(file);
+  };
+  input.click();
+}
+
+
+function openMailto(){
+  const client=getClient(state.ui.selectedClientId);const person=getInvoicePerson();
+  const inv=state.currentInvoice;
+  const to=encodeURIComponent(client?.email||"");
+  const subj=encodeURIComponent(`Rechnung ${inv.invoiceNo||""}`);
+  const body=encodeURIComponent(`Guten Tag,\n\nanbei die Rechnung ${inv.invoiceNo||""}.\nBitte exportieren Sie die PDF und fügen Sie sie manuell als Anhang hinzu.\n\nMit freundlichen Grüßen\n${person?.name||""}`);
+  window.location.href=`mailto:${to}?subject=${subj}&body=${body}`;
+}
+
+async function sendBackend(){
+  const client=getClient(state.ui.selectedClientId);
+  if(!client?.email){alert("Kunde hat keine E-Mail-Adresse.");return}
+  try{
+    const res=await fetch("/send-invoice",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:client.email,subject:`Rechnung ${state.currentInvoice.invoiceNo||""}`,message:"Bitte finden Sie die Rechnung im Anhang.",invoiceNo:state.currentInvoice.invoiceNo})});
+    if(!res.ok){alert("Backend-Fehler: "+res.status);return}alert("Anfrage gesendet.")
+  }catch{alert("Backend nicht verfügbar.")}
+}
+
+/* =================================================================
+   EVENT BINDINGS
+   ================================================================= */
+
+/* =================================================================
+   QUICK ADD CLIENT MODAL (runtime)
+   ================================================================= */
+function openQuickClientModal(){
+  ["qcName","qcAddress","qcEmail","qcPhone","qcPhone2","qcNotes"].forEach(id=>{const el=$(id); if(el) el.value="";});
+  const m=$("modalClient");
+  if(!m) return;
+  m.classList.add("open");
+  m.setAttribute("aria-hidden","false");
+  setTimeout(()=>{$("qcName")?.focus?.();},0);
+}
+function closeQuickClientModal(){
+  const m=$("modalClient");
+  if(!m) return;
+  m.classList.remove("open");
+  m.setAttribute("aria-hidden","true");
+}
+function saveQuickClientModal(){
+  const name=norm1($("qcName").value);
+  if(!name){alert("Bitte einen Namen eingeben.");$("qcName").focus();return;}
+  const c={
+    id:uid(),
+    name,
+    address:$("qcAddress").value||"",
+    email:norm1($("qcEmail").value),
+    phone:norm1($("qcPhone").value),
+    phone2:norm1($("qcPhone2").value),
+    notes:$("qcNotes").value||""
+  };
+  state.clients.push(c);
+  state.ui.selectedClientId=c.id;
+  debouncedSave();
+
+  closeQuickClientModal();
+
+  // Keep UI consistent
+  refreshInvoiceTab();
+  refreshClientsTab();
+  $("selClientMgmt").value=c.id;
+  loadClientForm(c.id);
+}
+function bindQuickClientModal(){
+  const m=$("modalClient");
+  if(!m) return;
+
+  m.addEventListener("click",(e)=>{ if(e.target?.dataset?.close) closeQuickClientModal(); });
+  $("btnCloseClientModal").addEventListener("click",closeQuickClientModal);
+  $("btnCancelClientModal").addEventListener("click",closeQuickClientModal);
+  $("btnSaveClientModal").addEventListener("click",saveQuickClientModal);
+
+  // ESC closes modal. We do NOT register any other global key handlers,
+  // so normal typing (including SPACE) stays untouched.
+  window.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape" && m.classList.contains("open")){
+      e.preventDefault();
+      closeQuickClientModal();
+    }
+  });
+}
+
+
+function bind(){
+  // Tab: Invoice
+  $("selClient").addEventListener("change",()=>{state.ui.selectedClientId=$("selClient").value;debouncedSave();refreshInvoiceTab()});
+  $("btnQuickClient").addEventListener("click",openQuickClientModal);
+  $("btnGoClients").addEventListener("click",()=>switchTab("clients"));
+  $("btnNewAssign").addEventListener("click",newAssignment);
+  $("btnRemoveAssign").addEventListener("click",removeAssignment);
+  $("btnFinalize").addEventListener("click",finalizeInvoice);
+
+  ["invoiceDate","invoiceNo","startDate","endDate","dayCount","dailyRate","payDays"].forEach(id=>$(id).addEventListener("input",()=>commitInvoiceForm(id)));
+  $("includeLastDay").addEventListener("change",()=>commitInvoiceForm("includeLastDay"));
+  ["xmasOn","xmasVal","newyearOn","newyearVal","travelOn","travelVal","svsOn","svsVal"].forEach(id=>{
+    $(id).addEventListener($(id).type==="checkbox"?"change":"input",()=>commitInvoiceForm(id))});
+
+  // Tab: Clients
+  $("selClientMgmt").addEventListener("change",()=>{loadClientForm($("selClientMgmt").value);renderClientStats($("selClientMgmt").value)});
+  ["clientName","clientAddress","clientEmail","clientPhone","clientPhone2","clientNotes"].forEach(id=>{
+    $(id).addEventListener("input",commitClientForm);
+    // On blur, apply gentle normalization (fixes spacebar issue while typing)
+    $(id).addEventListener("blur",()=>{
+      if(["clientName","clientEmail","clientPhone","clientPhone2"].includes(id)) $(id).value = norm1($(id).value);
+      commitClientForm();
+    });
+  });
+  $("btnNewClient").addEventListener("click",newClient);
+  $("btnDeleteClient").addEventListener("click",deleteClient);
+
+  // Tab: Persons
+  $("selPerson").addEventListener("change",loadPersonForm);
+  ["personName","personEmail","personPhone","personAddress","bankName","iban","bic","payNote"].forEach(id=>{
+    $(id).addEventListener("input",commitPersonForm);
+    $(id).addEventListener("blur",()=>{
+      if(["personName","personEmail","personPhone","bankName","iban","bic","payNote"].includes(id)) $(id).value = norm1($(id).value);
+      commitPersonForm();
+    });
+  });
+  $("teamMemberSel").addEventListener("change",()=>{
+    const sel=parsePersonSel();if(sel.type!=="team")return;
+    const t=state.teams.find(x=>x.id===sel.id);if(t)t.activeMemberId=$("teamMemberSel").value;
+    debouncedSave();renderPaper();
+  });
+  $("btnNewPerson").addEventListener("click",newPerson);
+  $("btnDeletePerson").addEventListener("click",deletePerson);
+  $("btnNewTeam").addEventListener("click",newTeam);
+
+  // Tab: History filters
+  ["histFilterClient","histFilterPerson","histFrom","histTo","histByInvDate"].forEach(id=>$(id).addEventListener("change",renderHistoryTable));
+
+  // Tab: Settings
+  $("btnExportJSON").addEventListener("click",exportJSON);
+  $("btnImportJSON").addEventListener("click",importJSON);
+  $("btnBackendMail").addEventListener("click",sendBackend);
+  $("btnResetAll").addEventListener("click",()=>{
+    if(!confirm("ACHTUNG: Alle Daten werden unwiderruflich gelöscht! Fortfahren?"))return;
+    if(!confirm("Sind Sie absolut sicher? Erstellen Sie vorher ein Backup!"))return;
+    localStorage.removeItem(STORAGE_KEY);state=bootstrap();loadAll();alert("Alle Daten wurden gelöscht.");
+  });
+
+  // Exports
+  $("btnPdf").addEventListener("click",exportPDF);
+  $("btnXlsx").addEventListener("click",()=>exportSheet("xlsx"));
+  $("btnOds").addEventListener("click",()=>exportSheet("ods"));
+  $("btnMailto").addEventListener("click",openMailto);
+}
+
+/* =================================================================
+   INIT
+   ================================================================= */
+function loadAll(){
+  refreshInvoiceTab();
+  refreshClientsTab();
+  refreshPersonsTab();
+  refreshHistoryTab();
+  updateStorageInfo();
+  setSaveState(false);
+}
+
+initTabs();
+bind();
+setupLogo();
+bindQuickClientModal();
+bindAssignModal();
+loadAll();
+
+})();
+</script>
+</body>
+</html>
